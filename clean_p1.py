@@ -35,8 +35,8 @@ def main():
 
     rcdb_strict = FILTER_STRICT(rcdb_full) 
 
-    rcdb_full.to_csv('rcdb/rcdb_full.csv', index=False, header=False)
-    rcdb_strict.to_csv('rcdb/rcdb_strict.csv', index=False, header=False)
+    rcdb_full.to_csv('data/rcdb_full.csv', index=False, header=False)
+    rcdb_strict.to_csv('data/rcdb_strict.csv', index=False, header=False)
 
 if __name__ == '__main__':
     main()

@@ -2,6 +2,7 @@
 A simple web scraper/data cleaner for the rollercoaster database site rcdb.com
 
 Usable data is found in **/data/rcdb_full.csv** and **/data/rcdb_strict.csv** (see differences below).
+Code is found 
 
 # Data Collected
 - **Metadata**: Coaster Name, Park Name, City, State/Province, Country

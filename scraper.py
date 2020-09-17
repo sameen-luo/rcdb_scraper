@@ -11,27 +11,30 @@ class PARSE_OUTCOME(enum.Enum):
     INCORRECTMETALEN = -9
 
 
-TYPE   = ['Steel', 'Wood']
-SCALE  = ['Extreme', 'Thrill', 'Family', 'Kiddie']
-DESIGN = ['Sit Down', 'Inverted', 'Suspended', 'Wing', 'Flying', 'Stand Up', 'Bobsled', 'Pipeline']
+TYPE = ['Steel', 'Wood']
+SCALE = ['Extreme', 'Thrill', 'Family', 'Kiddie']
+DESIGN = ['Sit Down', 'Inverted', 'Suspended', 'Wing',
+          'Flying', 'Stand Up', 'Bobsled', 'Pipeline']
 
 
 def parse_page(soup):
     meta = soup.body.section.div.div
 
     CoasterName = meta.div.h1.string
+    print(CoasterName)
 
     tmp = meta.div.find_all("a")
-    
+
     if len(tmp) < 4:
         return PARSE_OUTCOME.PARK
 
-    Park    = tmp[-4].string
-    City    = tmp[-3].string
-    State   = tmp[-2].string
+    #print(tmp)
+    Park = tmp[-4].string
+    City = tmp[-3].string
+    State = tmp[-2].string
     Country = tmp[-1].string
 
-    Status  = meta.p.a.string
+    Status = meta.p.a.string
 
     OpSince = None
     OpUntil = None
@@ -62,27 +65,46 @@ def parse_page(soup):
 
     if meta.ul == None:
         return PARSE_OUTCOME.OTHER
-    
-    Type   = None
-    Scale  = None
+
+    Type = None
+    Scale = None
     Design = None
     for s in meta.ul.strings:
-        if   s in TYPE:
-            Type   = s
+        if s in TYPE:
+            Type = s
         elif s in SCALE:
-            Scale  = s
+            Scale = s
         elif s in DESIGN:
             Design = s
 
-
-    Length   = None
-    Height   = None
-    Drop     = None
-    Speed    = None
+    Length = None
+    Height = None
+    Drop = None
+    Speed = None
     Inversions = None
     Vertical = None
     Duration = None
-    spec = list(soup.find('table', {'class' : 'stat-tbl'}).strings)
+    CarCapcity = None
+
+    stat_tbls = soup.find_all('table', {'class': 'stat-tbl'})
+    spec = list(stat_tbls[0].strings)
+    #print('Spec:')
+    #print(spec)
+
+    arragement_spec = list(stat_tbls[1].strings)
+    if arragement_spec[0] == 'Arrangement':
+        desc_str = arragement_spec[1]
+
+        capacity = [int(i) for i in arragement_spec[1].split() if i.isdigit()]
+        if desc_str.startswith('Single car trains'):
+            CarCapacity = capacity[-1]
+        elif desc_str.startswith('Single train with'):
+            CarCapacity = capacity[-1] / capacity[0]
+        else:
+            CarCapacity = capacity[-1] / capacity[1]
+
+    print('Arrangement', CarCapacity, desc_str)
+
     for i in range(len(spec)):
         if spec[i] == 'Length':
             Length = spec[i + 1]
@@ -101,20 +123,24 @@ def parse_page(soup):
         else:
             continue
         i += 1
-    
-    return [CoasterName, Park, City, State, Country, Status, OpSince, OpUntil, Type, Scale, Design, Length, Height, Drop, Speed, Inversions, Vertical, Duration]
+
+    return [CoasterName, Park, City, State, Country, Status, OpSince, OpUntil, Type, Scale, Design, Length, Height, Drop, Speed, Inversions, Vertical, Duration, CarCapacity]
 
 
 def m_2(x0, x1):
-    header = {"User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36 Edg/85.0.564.44"}
-    data = [['ID', 'CoasterName', 'Park', 'City', 'State', 'Country', 'Status', 'OpSince', 'OpUntil', 'Type', 'Scale', 'Design', 'Length', 'Height', 'Drop', 'Speed', 'Inversions', 'Vertical', 'Duration']]
+    header = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36 Edg/85.0.564.44"}
+    data = [['ID', 'CoasterName', 'Park', 'City', 'State', 'Country', 'Status', 'OpSince', 'OpUntil', 'Type',
+             'Scale', 'Design', 'Length', 'Height', 'Drop', 'Speed', 'Inversions', 'Vertical', 'Duration', 'CarCapacity']]
 
     anomalies = []
-    parks     = []
+    parks = []
 
     for i in range(x0, x1 + 1):
         if i % 50 == 0:
+            print('sleeping for 30 sec')
             time.sleep(30)
+            print('Done sleeping for 30 sec')
         p = requests.get("https://rcdb.com/" + str(i) + ".htm", headers=header)
         if p.status_code == 200:
             try:
@@ -132,23 +158,26 @@ def m_2(x0, x1):
         else:
             anomalies += [i]
 
-    pd.DataFrame(data).to_csv(     'data/rcdb' + str(x1 - 1) + '.csv',    index=False, header=False)
-    pd.DataFrame(anomalies).to_csv('anomalies_i_' + str(x1 - 1) + '.csv', index=False, header=False)
-    pd.DataFrame(parks).to_csv(    'parks_i_' + str(x1 - 1) + '.csv',     index=False, header=False)
+    pd.DataFrame(data).to_csv('data/rcdb' + str(x1 - 1) +
+                              '.csv',    index=False, header=False)
+    pd.DataFrame(anomalies).to_csv('anomalies_i_' +
+                                   str(x1 - 1) + '.csv', index=False, header=False)
+    pd.DataFrame(parks).to_csv('parks_i_' + str(x1 - 1) +
+                               '.csv',     index=False, header=False)
 
     return len(data), len(parks), len(anomalies)
 
 
 def main():
-    x0 =              1
-    x1 =     18685 // 8
-    x2 =     18685 // 4
+    x0 = 1
+    x1 = 18685 // 8
+    x2 = 18685 // 4
     x3 = 3 * 18685 // 8
-    x4 =     18685 // 2
+    x4 = 18685 // 2
     x5 = 5 * 18685 // 8
     x6 = 3 * 18685 // 4
     x7 = 7 * 18685 // 8
-    x8 =      18685 + 1
+    x8 = 18685 + 1
 
     xs_first_q = [x0, x1, x2]
     xs_secon_q = [x2, x3, x4]
